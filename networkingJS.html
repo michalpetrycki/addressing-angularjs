@@ -1,0 +1,985 @@
+<!doctype html>
+<html ng-app = "networksApp">
+
+	<head>
+	
+		<meta charset="utf-8">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" >
+		<title>Networking AngularJS</title>
+		
+		<style>
+		
+			/*Section selection buttons*/ 
+			.btn{
+			
+				margin-left: 5px;
+				margin-right: 5px;
+			
+			}
+			
+			/*Margin for whole container*/
+			.row:nth-child(1){
+			
+				margin-top: 160px;
+			
+			}
+			
+			/*IP and mask inputs rounded*/
+			input{
+			
+				border-radius: 5px;
+			
+			}
+			
+			/* Subnets containers */
+			.nbox{
+			
+				width: 30%;
+				float: left;
+			
+			}
+			
+			/* Margin from left side for subnets containers in new row(1, 4, 7...) */
+			.nbox:not(:nth-child(3n + 1)){
+			
+				margin-left: 40px;
+			
+			}
+			
+			/* Main panel for subnets section */
+			.subnetPanel{
+			
+				height: 250px;
+				display: flex;
+			
+			}
+			
+			/* Panel with networks in small subnet panel */
+			.leftPanel{
+			
+				flex: 1;
+			
+			}
+			
+			/* Paragraphs indention in subnets networks */
+			.leftPanel p{
+			
+				margin-left: 35px;
+			
+			}
+			
+			/* Hosts selection panel */
+			.rightPanel{
+			
+				flex: 1; 
+				margin-top: 70px; 
+				margin-left: 30px;
+			
+			}
+			
+			/* Add network button */
+			.addNet{
+			
+				height: 80px;
+				width: 120px;
+				margin-left: 100px;
+				margin-top: 110px;
+			
+			}
+			
+		</style>
+	
+	</head>
+	
+	<!-- adding angular controller -->
+	<body ng-controller = "networksController">
+	
+		<!-- main ocntainer -->
+		<div class = "container">
+		
+			<!-- ip and mask section -->
+			<div class = "row">
+			
+				<!-- form which holds ip and mask inputs -->
+				<form name = "addressForm" class = "form-horizontal" novalidate>
+				
+					<!-- ip section -->
+					<div class = "col-sm-6">
+					
+						<div class = "well text-center">
+						
+							<!-- ip label -->
+							<label for = "uIP">IP Address: </label>
+							
+							<!-- ip input ng-model sets variable visible in its scope-->
+							<input type = "text" 
+								id = "uIP"
+								name = "uIP"
+								ng-model = "userIp"
+								pattern = "\d{1,3}[.]\d{1,3}[.]\d{1,3}[.]\d{1,3}"
+								maxlength = "15" 
+								placeholder = "xxx.xxx.xxx.xxx" 
+								class = "form-control"
+								required> 
+							
+							<!-- show only if patern is wrong -->
+							<span ng-show = "addressForm.uIP.$error.pattern" class = "alert-danger">ip format: 123.123.123.123</span>
+						
+						</div> <!-- ip container end --> 
+						
+					</div> <!-- ip column end -->
+					
+
+					<!-- mask section -->
+					<div class = "col-sm-6">
+					
+						<div class = "well text-center">
+						
+							<!-- label for mask -->
+							<label for = "uMask">Mask: </label>
+							
+							<!-- input for mask -->
+							<input type = "text" 
+							id = "uMask"
+							name = "uMask"
+							ng-model = "userMask" 
+							pattern = "\d{1,3}[.]\d{1,3}[.]\d{1,3}[.]\d{1,3}"
+							maxlength = "15" 
+							placeholder = "xxx.xxx.xxx.xxx"
+							class = "form-control"
+							required>
+							
+							<!-- shows only when pattern is wrong -->
+							<span ng-show = "addressForm.uMask.$error.pattern" class = "alert-danger">mask format: 123.123.123.123</span>
+						
+						</div> <!-- mask container end -->
+					
+					</div> <!-- mask column end -->
+					
+				</form>
+				
+			</div> <!-- ip and mask panel end -->
+			
+			
+			<!-- section select buttons area -->
+			<div class = "row">
+			
+				<div class = "well well-sm text-center">
+				
+					<!-- DETAILS section button; shows only if ip and mask addresses are NOT EMPTY and NO ERORRS -->
+					<button class = "btn btn-success" ng-click = "detailsClick(userIp, userMask)" ng-disabled = "userIp === '' || userIp === undefined || userMask === '' || userMask === undefined">Details</button>
+					
+					<!-- FIVE NETWORKS section button; shows only if ip and mask addresses are NOT EMPTY and NO ERORRS -->
+					<button class = "btn btn-warning" ng-click = "fiveClick(userIp, userMask)" ng-disabled = "userIp === '' || userIp === undefined || userMask === '' || userMask === undefined">First five</button>
+					
+					<!-- SUBNETS section button; shows only if ip and mask addresses are NOT EMPTY and NO ERORRS -->
+					<button class = "btn btn-info" ng-click = "subnetClick()" ng-disabled = "userIp === '' || userIp === undefined || userMask === '' || userMask === undefined">Subnetting</button>
+				
+				</div>
+			
+			</div> <!-- buttons end -->
+			
+			
+			<!---------------------- DETAILS PANEL -------------------------->
+			<div class = "row" ng-show = "curr == 'details'">
+			
+				<div class = "well">
+				
+					<!-- Binary details panel -->
+					<div class = "col-md-6">
+					
+						<div class = "well well-sm">
+						
+							<center><h3>Binary</h3></center>
+							
+							<ul>
+								
+								<!--  Iterates thorugh binary details array  -->
+								<li ng-repeat = "detail in binaries">
+								
+									<p ng-show = "$index == 0"><strong>IP:</strong><br />{{ detail }}<p>
+									<p ng-show = "$index == 1"><strong>Mask:</strong><br />{{ detail }}</p>
+									<p ng-show = "$index == 2"><strong>Network IP:</strong><br />{{ detail }}</p>
+									<p ng-show = "$index == 3"><strong>First usable IP:</strong><br />{{ detail }}</p>
+									<p ng-show = "$index == 5"><strong>Last usable IP:</strong><br />{{ detail }}</p>
+									<p ng-show = "$index == 4"><strong>Broadcast:</strong><br />{{ detail }}</p>
+								
+								</li>
+							
+							</ul>
+						
+						</div> 
+					
+					</div> <!--Binary panel end -->
+					
+					
+					<!-- Decimal details panel -->
+					<div class = "col-md-6">
+					
+						<div class = "well well-sm">
+						
+							<center><h3>Decimal</h3></center>
+							
+							<ul>
+							
+								<!-- track by prevents from error raised by duplicated keys -->
+								<li ng-repeat = "decimal in decimals track by $index">
+								
+									<p ng-show = "$index == 0"><strong>IP:</strong><br />{{ decimal }}<p>
+									<p ng-show = "$index == 1"><strong>Mask:</strong><br />{{ decimal }}</p>
+									<p ng-show = "$index == 2"><strong>Network IP:</strong><br />{{ decimal }}</p>
+									<p ng-show = "$index == 3"><strong>First usable IP:</strong><br />{{ decimal }}</p>
+									<p ng-show = "$index == 5"><strong>Last usable IP:</strong><br />{{ decimal }}</p>
+									<p ng-show = "$index == 4"><strong>Broadcast:</strong><br />{{ decimal }}</p>
+								
+								</li>
+							
+							</ul> <!-- list end -->
+						
+						</div> <!-- small well end -->
+					
+					</div> <!-- Decimals panel end -->
+				
+				</div> <!-- well end --> 
+			
+			</div> <!-- DETAILS panel end -->
+			
+			
+			<!---------------------- FIVE NETWORKS PANEL -------------------------->
+			<div class = "row"  ng-show = "curr == 'five'">
+			
+				<!-- Made five time, each network has own panel. -->
+				<div class = "well nbox" ng-repeat = "i in [1, 2, 3, 4, 5]">
+				
+					<div class = "well">
+						
+						<legend class = "the-legend" ng-show = "i == 1">1st network</legend>
+						<legend class = "the-legend" ng-show = "i == 2">2nd network</legend>
+						<legend class = "the-legend" ng-show = "i == 3">3rd network</legend>
+						<legend class = "the-legend" ng-show = "i > 3">{{ i }}th network</legend>
+						
+						<!-- Determines which networks array use; There are five arrays, each holds 4 addresses; -->
+						<li ng-repeat = "net in returnArray(i)">
+						
+							<p ng-show = "$index == 0"><strong>Network IP:</strong> {{ net }}</p>
+							<p ng-show = "$index == 1"><strong>First usable IP:</strong> {{ net }}</p>
+							<p ng-show = "$index == 2"><strong>Last usable IP:</strong> {{ net }}</p>
+							<p ng-show = "$index == 3"><strong>Broadcast IP:</strong> {{ net }}</p>
+						
+						</li> <!-- list items end -->
+						
+					</div> <!-- well end -->
+				
+				</div> <!-- well nbox end -->
+			
+			</div> <!--FIVE NETWORKS panel end -->
+			
+			
+			<!---------------------- SUBNETS PANEL -------------------------->
+			<div class = "row"  ng-show = "curr == 'subnet'">
+			
+				<div class "well row">
+				
+					<!-- Every subnets has its own panel.  There has to be array of networks in controller. -->
+					<div class = "well nbox" ng-model = "n" ng-repeat = "n in networksArray track by $index">
+					
+						<legend class = "the-legend" ng-show = "n == 0">1st Network</legend>
+						<legend class = "the-legend" ng-show = "n == 1">2nd Network</legend>
+						<legend class = "the-legend" ng-show = "n == 2">3rd Network</legend>
+						<legend class = "the-legend" ng-show = "n > 2">{{ n + 1 }}th Network</legend>
+						
+						<!-- Subnet section -->
+						<div class = "row subnetPanel">
+						
+							<!-- Subnet networks section -->
+							<div class = "leftPanel">
+							
+								<p><strong>Network IP:</strong>{{ tempNetworks[$index] }}</p>
+								<p><strong>Mask IP:</strong>{{ tempMasks[n] }}</p>
+								<p><strong>First usable IP:</strong>{{ tempFirsts[n] }}</p>
+								<p><strong>Last usable IP:</strong>{{ tempLasts[n] }}</p>
+								<p><strong>Broadcast IP:</strong>{{ tempBroads[n] }}</p>
+								
+							</div> <!-- subnet networks panel end -->
+							
+							
+							<!-- Hosts selection panel -->
+							<div class = "rightPanel">
+							
+								<label for = "hostsSelect">Number of networks</label>
+								
+								<center>
+								
+									<!-- Showed only for first subnet -->
+									<select ng-show = "n == 0" ng-model = "hosts" ng-change = "calculateFields(userIp, userMask, hosts)">
+									
+										<option ng-repeat = "h in hostsArray">{{ h }}</option>
+										
+									</select>
+									
+									
+									<!-- Showed for all other subnets -->
+									<select ng-show = "n != 0" ng-model = "hosts" ng-change = "calcFields(userMask, hosts, n)">
+									
+										<option ng-repeat = "h in hostsArray">{{ h }}</option>
+										
+									</select>
+									
+								</center>
+							
+							</div> <!-- hosts selection panel end -->
+							
+						</div><!-- subnet panel end -->
+						
+					</div>
+					
+					
+					<!-- ADD Network button section -->
+					<div ng-show = "networks < 6">
+					
+						<!-- ADD network button -->
+						<button class = "btn addNet" ng-show = "buttonEnabled" ng-click = "addNetwork()">Add subnet</button>
+					
+					</div>
+				
+				</div>
+			
+			</div> <!-- SUBNETS panel end -->
+		
+		</div> <!-- content end -->
+	
+	
+		<script src = "https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+		<script src = "https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.3/umd/popper.min.js"></script>
+		<script src = "https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js"></script>
+		<script src = "https://ajax.googleapis.com/ajax/libs/angularjs/1.6.9/angular.min.js"></script>
+		
+		<script>
+		
+			//Module for angular application
+			var app = angular.module('networksApp', []);
+			
+			//Main controller
+			app.controller('networksController', ['$scope', function($scope){
+			
+				//Holds 'add network' button state
+				$scope.buttonEnabled = true;
+			
+				//Determines which section is currently visible 
+				$scope.curr = null;
+				
+				/*****Variables for 'details' panel*******/
+				$scope.binaries = []; /** Array of detailed networks**/
+				$scope.decimals = []; /** Array of decimal networks **/
+				
+				
+				/********Variables for 'five networks' panel*********/
+				$scope.fiveNetworks = []; /** Holds details of all five networks network **/
+				$scope.fiveOne = []; /** Holds details for first network **/
+				$scope.fiveTwo = []; /** Holds details for second network **/
+				$scope.fiveThree = []; /** Holds details for third network **/
+				$scope.fiveFour = []; /** Holds details for fourth network **/
+				$scope.fiveFive = []; /** Holds details for fifth network**/
+				
+				/**********Variables for 'subnetting' panel*************/
+				$scope.networks = 0; /** Holds subnets amount **/
+				$scope.hosts = 0; /** Holds host per subnet needed **/
+				$scope.networksArray = []; /** Array of subnets to iterate it through in view. **/
+				$scope.hostsArray = []; /** Array of hosts to iterate it through. Used in <hosts select> **/
+				
+				/**Arrays for networks in each panels*/
+				$scope.tempNetworks = []; /** Subnets networks array **/
+				$scope.tempMasks = []; /** Subnets masks array **/
+				$scope.tempFirsts = []; /** Subnets first ips array **/
+				$scope.tempLasts = []; /** Subnets last ips array **/
+				$scope.tempBroads = []; /** Subnets boradcasts array **/
+				
+				
+				/******************************METHODS***********************************************/
+				
+				/****************************************************************************************
+				********************************METHOD FOR 'DETAILS' PANEL*************************
+				****************************************************************************************/
+				$scope.detailsClick = function(userIp, userMask){
+				
+					//Setting 'details' as active tab
+					$scope.curr = 'details';
+					
+					$scope.binaries[0] = toBinary(userIp);
+					$scope.binaries[1] = toBinary(userMask);
+					$scope.binaries[2] = networkIP(toBinary(userIp), toBinary(userMask));
+					$scope.binaries[3] = firstIP($scope.binaries[2]);
+					$scope.binaries[4] = broadcast(toBinary(userIp), toBinary(userMask));
+					$scope.binaries[5] = lastIP($scope.binaries[4]);
+					
+					
+					$scope.decimals[0] = toDecimal($scope.binaries[0]);
+					$scope.decimals[1] = toDecimal($scope.binaries[1]);
+					$scope.decimals[2] = toDecimal($scope.binaries[2]);
+					$scope.decimals[3] = toDecimal($scope.binaries[3]);
+					$scope.decimals[4] = toDecimal($scope.binaries[4]);
+					$scope.decimals[5] = toDecimal($scope.binaries[5]);
+					
+				};
+				
+				
+				/****************************************************************************************
+				********************************METHOD FOR 'FIVE NETWORKS' PANEL*************************
+				****************************************************************************************/
+				/*****Fired when 'five networks' button is clicked. Builds up five networks from given ip and mask *****/
+				$scope.fiveClick = function(userIp, userMask){
+				
+					//Setting 'five networks' as active tabs 
+					$scope.curr = 'five';
+					
+					//Creating networks of FIVE networks 
+					$scope.fiveNetworks = calculate(userIp, userMask);
+					
+					//Assigning networks to its collections. Every collection has: networkIP, first usable IP, last usable IP and broadcast IP//
+					$scope.fiveOne = [ toDecimal($scope.fiveNetworks[0]), toDecimal($scope.fiveNetworks[1]), toDecimal($scope.fiveNetworks[2]), toDecimal($scope.fiveNetworks[3]) ];
+					$scope.fiveTwo = [ toDecimal($scope.fiveNetworks[4]), toDecimal($scope.fiveNetworks[5]), toDecimal($scope.fiveNetworks[6]), toDecimal($scope.fiveNetworks[7]) ];
+					$scope.fiveThree = [ toDecimal($scope.fiveNetworks[8]), toDecimal($scope.fiveNetworks[9]), toDecimal($scope.fiveNetworks[10]), toDecimal($scope.fiveNetworks[11]) ];
+					$scope.fiveFour = [ toDecimal($scope.fiveNetworks[12]), toDecimal($scope.fiveNetworks[13]), toDecimal($scope.fiveNetworks[14]), toDecimal($scope.fiveNetworks[15]) ];
+					$scope.fiveFive = [ toDecimal($scope.fiveNetworks[16]), toDecimal($scope.fiveNetworks[17]), toDecimal($scope.fiveNetworks[18]), toDecimal($scope.fiveNetworks[19]) ];
+					
+				};
+				
+				/**Returns collection of networks to iterate through in 'five networks' panel. *****/
+				$scope.returnArray = function(i){
+				
+					if(i === 1)
+						return $scope.fiveOne;
+						
+					else if(i === 2)
+						return $scope.fiveTwo;
+						
+					else if(i === 3)
+						return $scope.fiveThree;
+						
+					else if(i === 4)
+						return $scope.fiveFour;
+						
+					else if(i === 5)
+						return $scope.fiveFive;
+				
+				};
+				
+				
+				
+				/****************************************************************************************
+				********************************METHOD FOR 'SUBNETS' PANEL*************************
+				****************************************************************************************/
+				$scope.subnetClick = function(){
+				
+					//Setting subnet panel as active
+					$scope.curr = 'subnet';
+					
+					//Creating hosts selection list
+					$scope.makeHosts();
+					
+				
+				};
+				
+				
+				
+				/**************OTHER METHODS************/
+				
+				//Turns decimal number into binary number
+				// deicmal - var 
+				var toBinary = function(decimal){
+				
+					//Variables for octets
+					var firstOctet, secondOctet, thirdOctet, lastOctet;
+					
+					//Final array 
+					var binary = [];
+					
+					//Extracting first number from decimal
+					firstOctet = decimal.substring(0, decimal.indexOf('.'));
+					decimal = decimal.substring(decimal.indexOf('.') + 1);
+					
+					//Extracting second number from decimal
+					secondOctet = decimal.substring(0, decimal.indexOf('.'));
+					decimal = decimal.substring(decimal.indexOf('.') + 1);
+					
+					//Extracting third number from decimal
+					thirdOctet = decimal.substring(0, decimal.indexOf('.'));
+					decimal = decimal.substring(decimal.indexOf('.') + 1);
+					
+					//Extracting last number from decimal
+					lastOctet = decimal;
+					
+					
+					//Turning octets into binaries. For every octet powers of two are added. 
+					for(var i = 0; i < 32; i++){
+					
+						if(i >= 0 && i < 8){
+						
+							if(firstOctet >= Math.pow(2, 7 - i)){
+							
+								binary[i] = 1;
+								firstOctet -= Math.pow(2, 7 - i);
+							
+							}else 
+								binary[i] = 0;
+						
+						}
+						else if(i >= 8 && i < 16){
+						
+							if(secondOctet >= Math.pow(2, 15 - i)){
+							
+								binary[i] = 1;
+								secondOctet -= Math.pow(2, 15 - i);
+							
+							}else 
+								binary[i] = 0;
+						
+						}
+						else if(i >= 16 && i < 24){
+						
+							if(thirdOctet >= Math.pow(2, 23 - i)){
+							
+								binary[i] = 1;
+								thirdOctet -= Math.pow(2, 23 - i);
+							
+							}else 
+								binary[i] = 0;
+						
+						}
+						else if(i >= 24 && i < 32){
+						
+							if(lastOctet >= Math.pow(2, 31 - i)){
+							
+								binary[i] = 1;
+								lastOctet -= Math.pow(2, 31 - i);
+							
+							}else 
+								binary[i] = 0;
+						
+						}
+						
+					}
+					
+					//Return final binary array
+					return binary;
+				
+				};
+				
+				
+				//Calculates network IP regarding to given ip and mask.
+				// ip - [] and mask - [] 
+				var networkIP = function(ip, mask){
+				
+					//Final network IP 
+					var networkID = [];
+					
+					//Sets up '1' if ip and mask bits are '1' and 0 otherwise.
+					for(var i = 0; i < 32; i++){
+					
+						if(ip[i] == 1 && mask[i] == 1)
+							networkID[i] = 1;
+						
+						else
+							networkID[i] = 0;						
+					
+					}
+					
+					//Return final network IP
+					return networkID;
+				
+				};
+				
+				
+				//Calculates first usable IP using given network IP. In general it just adds '1' using binary values. 
+				// network - []
+				var firstIP = function(network){
+				
+					//First usable IP array 
+					var first = [];
+					// 1 as binary array
+					var one = [];
+					
+					//Carrier used for adding bits 
+					var carrier = 0;
+					
+					//Setting up '1' binary array 
+					for(var i = 31; i >= 0; i--){
+					
+					
+						if(i === 31){
+						
+							one[i] = 1;
+						
+						}
+						
+						else 
+							one[i] = 0;
+					
+					}
+						
+						
+					//Adding binary arrays 
+					for(var i = 31; i >= 0; i--){
+					
+						first[i] = network[i] + one[i] + carrier;
+						
+						if(first[i] > 1){
+						
+							first[i] = 0;
+							carrier = 1;
+						
+						}
+						else 
+							carrier = 0;
+					
+					}
+					
+					//Returns final first usable ip 
+					return first;
+				
+				};
+				
+				
+				//Calculates broadcast IP using given ip and mask IPs. 
+				// ip - [], mask - []
+				var broadcast = function(ip, mask){
+				
+					//Final broadcast array
+					var broadcast = [];
+					
+					//Copy of mask array 
+					var nandMask = mask.slice();
+					
+					//Mask negation
+					for(var i = 0; i < 32; i++){
+					
+						if(mask[i] == 0)
+							nandMask[i] = 1;
+							
+						else 
+							nandMask[i] = 0;
+					
+					}
+					
+					
+					//Adding ip and negated mask bits
+					for(var i = 0; i < 32; i++){
+					
+						if(ip[i] == 1 && nandMask[i] == 1){
+						
+							broadcast[i] = 1;
+						
+						}else{
+						
+							broadcast[i] = ip[i] + nandMask[i];
+						
+						}
+					
+					}
+					
+					//Returns final broadcast array
+					return broadcast;
+				
+				};
+				
+				
+				//Calculates last ip address
+				// broadcast - []
+				var lastIP = function(broadcast){
+				
+					//Final array for last usable IP 
+					var lastIP = [];
+					
+					//Array which holds broadcast copy
+					var a = broadcast.slice();
+					
+					//Counter used to adding bits 
+					var counter = 1;
+					
+					
+					//Loop in general subtract one in binary representation. 
+					for(var i = 31; i >= 0; i--){
+					
+						if(i < 32 && i > 23){
+						
+							if(a[i] - counter === -1){
+							
+								lastIP[i] = 1;
+								counter = 1;
+							
+							}else if(a[i] - counter == 0){
+							
+								lastIP[i] = 0;
+								counter = 0;
+							
+							}else{
+							
+								lastIP[i] = a[i];
+							
+							}
+						
+						}else{
+						
+							lastIP[i] = a[i];
+						
+						}
+					
+					}
+					
+					
+					//Returns last usable ip
+					return lastIP;
+				
+				};
+				
+				
+				//Calculates decimal representation of binary number
+				var toDecimal = function(binary){
+				
+					//Variables for representation octets 
+					var firstDecimal, secondDecimal, thirdDecimal, lastDecimal;
+					firstDecimal = secondDecimal = thirdDecimal = lastDecimal = 0;
+					
+					//Adding power of two to variables
+					for(var i = 0; i < binary.length; i++){
+					
+					
+						if(i >= 0 && i < 8){
+						
+							if(binary[i] == 1)
+								firstDecimal += Math.pow(2, 7 - i);
+						
+						}else if(i >= 8 && i < 16){
+						
+							if(binary[i] == 1)
+								secondDecimal += Math.pow(2, 15 - i);
+						
+						}else if(i >= 16 && i < 24){
+						
+							if(binary[i] == 1)
+								thirdDecimal += Math.pow(2, 23 - i);
+						
+						}else{
+						
+							if(binary[i] == 1)
+								lastDecimal += Math.pow(2, 31 - i);
+						
+						}
+					
+					}
+					
+					//Return ip representation 101.102.103.104
+					return firstDecimal + '.' + secondDecimal + '.' + thirdDecimal + '.' + lastDecimal;
+					
+				};
+				
+				
+				/********Calculates five networks********/
+				var calculate = function(ip, mask){
+				
+					//Each networks has its network ip, first usable ip, last usable ip and broadcast ip; number of hosts needed;
+					var net1 = [], net2 = [], net3 = [], net4 = [], net5 = [], addresses = [], hosts = [];
+					//Carrier for adding bits in binaries; power it's next power of two greater than hosts amount;
+					var carrier = 0, power = 0;
+					
+					//Calculating power of two greater than hosts 
+					for(var i = 31; i >= 0; i--){
+					
+						if(mask[i] == 0 && mask[i - 1] == 1)
+							power = 31 - i;
+					
+					}
+					
+					
+					//Hosts number in binary representation
+					for(var i = 31; i >= 0; i--){
+					
+						if(31 - 1 == power)
+							hosts[i] = 1;
+						
+						else	
+							hosts[i] = 0;
+					
+					}
+					
+					
+					//Calculating networks for first network
+					net1[0] = toBinary(ip);
+					net1[3] = broadcast(toBinary(ip), toBinary(mask));
+					net1[2] = lastIP(net1[3]);
+					net1[1] = firstIP(net1[0]);
+					
+					
+					//Calculating networks for second network
+					net2[0] = firstIP(net1[3]);
+					net2[1] = firstIP(net2[0]);
+					net2[3] = broadcast(net2[0], toBinary(mask));
+					net2[2] = lastIP(net2[3]);
+					
+					
+					//Calculating networks for third network
+					net3[0] = firstIP(net2[3]);
+					net3[1] = firstIP(net3[0]);
+					net3[3] = broadcast(net3[0], toBinary(mask));
+					net3[2] = lastIP(net3[3]);
+					
+					
+					//Calculating networks for fourth network
+					net4[0] = firstIP(net3[3]);
+					net4[1] = firstIP(net4[0]);
+					net4[3] = broadcast(net4[0], toBinary(mask));
+					net4[2] = lastIP(net4[3]);
+					
+					
+					//Calculating networks for fifth network
+					net5[0] = firstIP(net4[3]);
+					net5[1] = firstIP(net5[0]);
+					net5[3] = broadcast(net5[0], toBinary(mask));
+					net5[2] = lastIP(net5[3]);
+					
+					
+					//Adding first network details into final array
+					addresses[0] = net1[0];
+					addresses[1] = net1[1];
+					addresses[2] = net1[2];
+					addresses[3] = net1[3];
+					
+					//Adding second network details into final array
+					addresses[4] = net2[0];
+					addresses[5] = net2[1];
+					addresses[6] = net2[2];
+					addresses[7] = net2[3];
+				
+					//Adding third network details into final array
+					addresses[8] = net3[0];
+					addresses[9] = net3[1];
+					addresses[10] = net3[2];
+					addresses[11] = net3[3];
+					
+					//Adding fourth network details into final array
+					addresses[12] = net4[0];
+					addresses[13] = net4[1];
+					addresses[14] = net4[2];
+					addresses[15] = net4[3];
+					
+					//Adding fifth network details into final array
+					addresses[16] = net5[0];
+					addresses[17] = net5[1];
+					addresses[18] = net5[2];
+					addresses[19] = net5[3];
+					
+					
+					//Returns final array 
+					return addresses;
+				
+				};
+				
+				
+				/**************Builds up options for hosts selection*******/
+				//Creates list from 0-255 hosts to select from.
+				$scope.makeHosts = function(){
+				
+					$scope.hostsArray.length = 0;
+					for(var i = 0; i < 256; i++){
+					
+						$scope.hostsArray.push(i);
+					
+					}
+				
+				};
+				
+				//Calculates mask for subnet regarding to hosts needed 
+				//userMask - var, hosts - var
+				$scope.calculateMask = function(userMask, hosts){
+				
+					//Binary representation of mask
+					var maskBin = toBinary(userMask);
+					
+					//Next power of two greater than hosts amount
+					var power = 0;
+					
+					//Hosts is amount of hosts needed + network IP + broadcst IP
+					var hostsNeeded = parseInt(hosts);
+					hostsNeeded += 2;
+					
+					
+					//Calculating power of two greather than total hosts amount
+					for(var i = 0; i < 7; i++){
+					
+						if(Math.pow(2, i) < hostsNeeded && Math.pow(2, i + 1) > hostsNeeded)
+							power = i + 1;
+							
+						else if(Math.pow(2, i) == hostsNeeded)
+							power = i;
+					
+					}
+					
+					//Calculating mask 
+					for(var i = 24; i < 32; i++){
+					
+						if(i + power < 32)
+							maskBin[i] = 1;
+					
+					}
+					
+					//Returns final decimal mask value
+					return toDecimal(maskBin);
+					
+				};
+				
+				
+				/**************Adds network to networks collection*******/
+				/**Regarding to networks amount as many networks panels are built***/
+				$scope.addNetwork = function(){
+				
+					//Increasing networks amount 
+					$scope.networks += 1;
+					
+					$scope.networksArray.length = 0;
+					for(var i = 0; i < $scope.networks; i++){
+					
+						$scope.networksArray.push(i);
+					
+					}
+					
+					//making adding network button invisible
+					$scope.buttonEnabled = false;
+					
+				};
+				
+				
+				/***********Calculates fields in network divs in 'subnets panel'******/
+				$scope.calcFields = function(userMask, hosts, n){
+				
+					$scope.tempNetworks[n] = toDecimal(firstIP(toBinary($scope.tempBroads[n - 1])));
+					$scope.tempMasks[n] = $scope.calculateMask(userMask, hosts);
+					$scope.tempFirsts[n] = toDecimal(firstIP(toBinary($scope.tempNetworks[n])));
+					$scope.tempBroads[n] = toDecimal(broadcast(toBinary($scope.tempNetworks[n]), toBinary($scope.tempMasks[n])));
+					$scope.tempLasts[n] = toDecimal(lastIP(toBinary($scope.tempBroads[n])));
+					
+					//Making adding network button visible 
+					$scope.buttonEnabled = true;
+				};
+				
+				
+				/***********Calculates fields in network divs in 'subnets panel' only it it's first div!******/
+				$scope.calculateFields = function(userIp, userMask, hosts){
+				
+					$scope.tempNetworks[0] = userIp;
+					$scope.tempMasks[0] = $scope.calculateMask(userMask, hosts);
+					$scope.tempFirsts[0] = toDecimal(firstIP(toBinary(userIp)));
+					$scope.tempBroads[0] = toDecimal(broadcast(toBinary(userIp), toBinary($scope.calculateMask(userMask, hosts))));
+					$scope.tempLasts[0] = toDecimal(lastIP(toBinary($scope.tempBroads[0])));
+					
+					//Making adding network button visible 
+					$scope.buttonEnabled = true;
+					
+				};
+				
+			}]);
+		
+		</script>
+	
+	</body>
+	
+</html>
